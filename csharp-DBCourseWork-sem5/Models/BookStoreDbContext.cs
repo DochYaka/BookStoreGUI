@@ -31,6 +31,8 @@ public partial class BookStoreDbContext : DbContext
 
     public virtual DbSet<Employee> Employees { get; set; }
 
+    public virtual DbSet<EmployeeInfo> EmployeeInfos { get; set; }
+
     public virtual DbSet<Individual> Individuals { get; set; }
 
     public virtual DbSet<Legalentity> Legalentities { get; set; }
@@ -233,6 +235,37 @@ public partial class BookStoreDbContext : DbContext
                 .HasForeignKey<Employee>(d => d.IndividualId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("employee_individual_id_fkey");
+        });
+
+        modelBuilder.Entity<EmployeeInfo>(entity =>
+        {
+            entity
+                .HasNoKey()
+                .ToView("employee_info");
+
+            entity.Property(e => e.FirstName)
+                .HasMaxLength(50)
+                .HasColumnName("first_name");
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.LastName)
+                .HasMaxLength(50)
+                .HasColumnName("last_name");
+            entity.Property(e => e.MiddleName)
+                .HasMaxLength(50)
+                .HasColumnName("middle_name");
+            entity.Property(e => e.PassportNumber)
+                .HasMaxLength(6)
+                .IsFixedLength()
+                .HasColumnName("passport_number");
+            entity.Property(e => e.PassportSeries)
+                .HasMaxLength(4)
+                .IsFixedLength()
+                .HasColumnName("passport_series");
+            entity.Property(e => e.PhoneNumber)
+                .HasMaxLength(11)
+                .IsFixedLength()
+                .HasColumnName("phone_number");
+            entity.Property(e => e.WorkExperience).HasColumnName("work_experience");
         });
 
         modelBuilder.Entity<Individual>(entity =>
@@ -466,6 +499,9 @@ public partial class BookStoreDbContext : DbContext
             entity.Property(e => e.TableName)
                 .HasMaxLength(50)
                 .HasColumnName("table_name");
+            entity.Property(e => e.FuncName)
+                .HasMaxLength(25)
+                .HasColumnName("func_name");
         });
 
         modelBuilder.Entity<Specialty>(entity =>

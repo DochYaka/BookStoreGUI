@@ -23,6 +23,9 @@ namespace csharp_DBCourseWork_sem5
                 {
                     if (e.PropertyName == nameof(MainViewModel.HighlightedRows))
                         dgData.Items.Refresh();
+
+                    if (e.PropertyName == nameof(MainViewModel.Messages))
+                        tcOutput.SelectedIndex = vm.IsError ? 1 : 0;
                 };
             }
 
@@ -74,6 +77,7 @@ namespace csharp_DBCourseWork_sem5
 
             e.Column.MinWidth = 20;
             e.Column.Width = DataGridLength.Auto;
+            e.Column.IsReadOnly = false;
         }
 
         private void rtbRawSql_TextChanged(object sender, TextChangedEventArgs e)
@@ -83,6 +87,39 @@ namespace csharp_DBCourseWork_sem5
                 TextRange textRange = new TextRange(rtbRawSql.Document.ContentStart, rtbRawSql.Document.ContentEnd);
                 vm.RawSql = textRange.Text.Trim();
             }
+        }
+
+        /// <summary>
+        /// Перед сохранением завершаем редактирование ячейки и строки в гриде,
+        /// иначе заполняемая в данный момент строка не попадёт в таблицу.
+        /// (Click срабатывает раньше Command.)
+        /// </summary>
+        private void Save_Click(object sender, RoutedEventArgs e)
+        {
+            dgData.CommitEdit(DataGridEditingUnit.Cell, true);
+            dgData.CommitEdit(DataGridEditingUnit.Row, true);
+        }
+
+        /// <summary>
+        /// В режиме редактирования разрешаем менять только новые (ещё не сохранённые) строки
+        /// </summary>
+        private void dgData_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"BeginningEdit: {e.Row.Item?.GetType().Name}, " +
+                $"state: {(e.Row.Item as System.Data.DataRowView)?.Row.RowState}");
+
+            if (e.Row.Item is System.Data.DataRowView rv &&
+                rv.Row.RowState is System.Data.DataRowState.Unchanged or System.Data.DataRowState.Modified)
+            {
+                e.Cancel = true;
+            }
+        }
+
+        private void dgData_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (DataContext is MainViewModel vm)
+                vm.SelectedRows = dgData.SelectedItems.OfType<System.Data.DataRowView>().ToList();
         }
 
         /// <summary>

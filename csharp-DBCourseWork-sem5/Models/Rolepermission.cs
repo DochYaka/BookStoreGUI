@@ -8,4 +8,6 @@ public partial class Rolepermission
     public string Role { get; set; } = null!;
 
     public string TableName { get; set; } = null!;
+
+    public string? FuncName { get; set; }
 }

@@ -12,8 +12,6 @@ public partial class Legalentity
 
     public string Name { get; set; } = null!;
 
-    public string Abbreviation { get; set; } = null!;
-
     public string Code { get; set; } = null!;
 
     public string CurrentAccountNumber { get; set; } = null!;

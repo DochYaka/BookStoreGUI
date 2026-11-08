@@ -17,6 +17,10 @@
         <KeyBinding Gesture="F5" Command="{Binding RunCommand}"/>
     </Window.InputBindings>
 
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="220" MinWidth="150"/>
@@ -54,8 +58,9 @@
             <!-- Поле ввода SQL -->
             <Border Grid.Row="1" Background="#FF222121">
                 <RichTextBox x:Name="rtbRawSql" 
-             Background="Transparent" Foreground="White"
-             AcceptsReturn="True" VerticalScrollBarVisibility="Auto">
+                     Background="Transparent" Foreground="White"
+                     AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+                     TextChanged="rtbRawSql_TextChanged">
                     <RichTextBox.Resources>
                         <Style TargetType="Paragraph">
                             <Setter Property="LineHeight" Value="20"/>
@@ -67,9 +72,8 @@
         </Grid>
 
         <!--- Нижняя панель с кнопками и DataGrid -->
-        <TabControl Grid.Column="2" Grid.Row="3"
+        <TabControl x:Name="tcOutput" Grid.Column="2" Grid.Row="3"
             Background="#FF222121" FontSize="18" BorderThickness="0">
-
             <!-- Панель DataOutput-->
             <TabItem Header="DataOutput">
                 <Grid>
@@ -78,11 +82,28 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Background="#FF222121" Margin="5, 0, 0, 0">
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Background="#FF222121" Margin="5,0,0,0" Grid.ColumnSpan="2">
+                        <!-- Режим редактирования -->
+                        <Button Width="30" Height="30" Margin="2" BorderThickness="0" Content="✎"
+                            Command="{Binding ToggleEditCommand}"
+                            Style="{StaticResource SubMenuButton}" ToolTip="Режим редактирования"/>
+
+                        <!-- Сохранить изменения (виден только в режиме редактирования) -->
+                        <Button Width="30" Height="30" Margin="2" BorderThickness="0" Content="💾"
+                            Command="{Binding SaveChangesCommand}" Click="Save_Click"
+                            Visibility="{Binding IsEditMode, Converter={StaticResource BoolToVis}}"
+                            Style="{StaticResource SubMenuButton}" ToolTip="Сохранить изменения"/>
+
+                        <!-- Удалить выбранные строки (виден только в режиме редактирования) -->
+                        <Button Width="30" Height="30" Margin="2" BorderThickness="0" Content="🗑"
+                            Command="{Binding DeleteRowsCommand}"
+                            Visibility="{Binding IsEditMode, Converter={StaticResource BoolToVis}}"
+                            Style="{StaticResource SubMenuButton}" ToolTip="Удалить выбранные строки"/>
+
                         <!-- Кнопка поиска -->
                         <Button Width="30" Height="30" Margin="2" BorderThickness="0" Content="🔍" Command="{Binding SearchCommand}"
                                 Style="{StaticResource SubMenuButton}" ToolTip="Поиск"/>
-                        
+
                         <!-- Поле поиска -->
                         <Grid>
                             <TextBox Visibility="Visible" Width="100" Height="25" BorderThickness="0.5" Background="Transparent" Foreground="White"
@@ -106,18 +127,36 @@
                     </StackPanel>
 
                     <!-- DataGrid -->
-                    <DataGrid Grid.Row="1" x:Name="dgData" Margin="5" AutoGenerateColumns="True" FontSize="12" HorizontalAlignment="Left" VerticalAlignment="Top"
-                          IsReadOnly="True" Foreground="White" Background="#FF222121"
-                          AutoGeneratingColumn="dgData_AutoGeneratingColumn" ItemsSource="{Binding TableData}"
-                          CanUserAddRows="False" LoadingRow="dgData_LoadingRow"
-                          GridLinesVisibility="None" RowBackground="#FF222121" AlternatingRowBackground="#FF2A2A2A"
-                          EnableRowVirtualization="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"/>
+                    <DataGrid Grid.Row="1" x:Name="dgData" Margin="5,5,0,0" AutoGenerateColumns="True" FontSize="12" HorizontalAlignment="Left" VerticalAlignment="Top"
+                        IsReadOnly="{Binding IsReadOnlyMode}" Foreground="White" Background="#FF222121"
+                        AutoGeneratingColumn="dgData_AutoGeneratingColumn" ItemsSource="{Binding TableData}"
+                        LoadingRow="dgData_LoadingRow"
+                        CanUserAddRows="{Binding IsEditMode}" CanUserDeleteRows="False"
+                        BeginningEdit="dgData_BeginningEdit"
+                        SelectionUnit="FullRow" SelectionMode="Extended" SelectionChanged="dgData_SelectionChanged"
+                        GridLinesVisibility="None" RowBackground="#FF222121" AlternatingRowBackground="#FF2A2A2A"
+                        EnableRowVirtualization="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"/>
                 </Grid>
             </TabItem>
 
             <!-- Панель сообщений -->
             <TabItem Header="Messages">
-                <TextBlock Text="dadwadw" Foreground="White" Margin="5"/>
+                <TextBox Text="{Binding Messages, Mode=OneWay}"
+             IsReadOnly="True" TextWrapping="Wrap"
+             VerticalScrollBarVisibility="Auto"
+             Background="Transparent" BorderThickness="0"
+             FontFamily="Consolas" FontSize="14" Margin="5">
+                    <TextBox.Style>
+                        <Style TargetType="TextBox">
+                            <Setter Property="Foreground" Value="White"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsError}" Value="True">
+                                    <Setter Property="Foreground" Value="#FFFF6B6B"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBox.Style>
+                </TextBox>
             </TabItem>
         </TabControl>
 
