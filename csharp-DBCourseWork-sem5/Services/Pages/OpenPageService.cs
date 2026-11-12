@@ -4,7 +4,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 
-namespace csharp_DBCourseWork_sem5.Services
+namespace csharp_DBCourseWork_sem5.Services.Pages
 {
     public static class OpenPageService
     {

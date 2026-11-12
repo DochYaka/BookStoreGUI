@@ -1,11 +1,11 @@
 ﻿using csharp_DBCourseWork_sem5.Models;
-using csharp_DBCourseWork_sem5.Services;
 using csharp_DBCourseWork_sem5.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
+using csharp_DBCourseWork_sem5.Services.Pages;
 
 namespace csharp_DBCourseWork_sem5
 {
@@ -22,6 +22,8 @@ namespace csharp_DBCourseWork_sem5
             {
                 vm.LoginSucceeded += OnLoginSucceeded;
                 vm.LoginFailed += OnLoginFailed;
+                vm.DbConnectFailed += OnDbConnectFailed;
+                vm.UnknownError += OnUnknownError;
             }
 
             fmPage.Visibility = Visibility.Visible;
@@ -40,18 +42,19 @@ namespace csharp_DBCourseWork_sem5
             OpenPageService.OpenPage(name, fmPage);
         }
 
-        /// <summary>
-        /// Войти
-        /// </summary>
+
         private void OnLoginSucceeded(object? sender, System.EventArgs e)
         {
             new MainWindow().Show();
             Window.GetWindow(this)?.Close();
         }
 
-        /// <summary>
-        /// Отказ
-        /// </summary>
+        private void OnDbConnectFailed(object? sender, System.EventArgs e)
+            => MessageBox.Show("База данных недоступна. Проверьте подключение к серверу и повторите попытку.");
+
+        private void OnUnknownError(object? sender, System.EventArgs e)
+            => MessageBox.Show("Неизвестная ошибка");
+
         private void OnLoginFailed(object? sender, System.EventArgs e)
             => MessageBox.Show("Неверный логин или пароль!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
 

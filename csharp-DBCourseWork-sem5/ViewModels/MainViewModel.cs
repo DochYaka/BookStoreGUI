@@ -2,12 +2,13 @@
 using CommunityToolkit.Mvvm.Input;
 using csharp_DBCourseWork_sem5.Models;
 using csharp_DBCourseWork_sem5.Services;
+using csharp_DBCourseWork_sem5.Services.Tables;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using System.Collections.ObjectModel;
 using System.Data;
-using System.Text;
 using System.Windows;
+using System.Windows.Documents;
 
 namespace csharp_DBCourseWork_sem5.ViewModels
 {
@@ -16,34 +17,26 @@ namespace csharp_DBCourseWork_sem5.ViewModels
         public event EventHandler? LoadDataFailed;
         public event EventHandler? ConnectionFailed;
 
-        public ObservableCollection<TableInfo> Tables { get; } = new();
+        public ObservableCollection<TableInfo> ReferenceTables { get; } = new();
+        public ObservableCollection<TableInfo> OtherTables { get; } = new();
 
-        [ObservableProperty]
-        private DataView? _tableData;
+        [ObservableProperty] private DataView? _tableData;
 
-        [ObservableProperty]
-        private TableInfo? _selectedTable;
+        [ObservableProperty] private TableInfo? _selectedTable;
 
-        [ObservableProperty]
-        private string _rawSql = string.Empty;
+        [ObservableProperty] private string _rawSql = string.Empty;
 
-        [ObservableProperty]
-        private string _searchInput = string.Empty;
+        [ObservableProperty] private string _searchInput = string.Empty;
 
-        [ObservableProperty]
-        private DataRow[]? _highlightedRows;
+        [ObservableProperty] private DataRow[]? _highlightedRows;
 
-        [ObservableProperty]
-        private IList<DataRowView> _selectedRows = new List<DataRowView>();
+        [ObservableProperty] private TableInfo[] _highlightedTables;
 
-        [ObservableProperty]
-        private string _messages = string.Empty;
+        [ObservableProperty] private IList<DataRowView> _selectedRows = new List<DataRowView>();
 
-        [ObservableProperty]
-        private bool _isError;
-
-        [ObservableProperty]
-        private int _selectedTabIndex;
+        [ObservableProperty] private string _messages = string.Empty;
+        [ObservableProperty] private bool _isError;
+        [ObservableProperty] private int _selectedTabIndex;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(IsReadOnlyMode))]
@@ -56,9 +49,11 @@ namespace csharp_DBCourseWork_sem5.ViewModels
 
         private TableInfo? _loadedTable;
 
-        private HashSet<string> _requiredColumns = new();
+        private HashSet<string> _notNullColumns = new();
 
         private List<string> _primaryKey = new();
+
+        public bool IsKeyColumn(string columnName) => _primaryKey.Contains(columnName);
 
         public MainViewModel()
         {
@@ -99,11 +94,17 @@ namespace csharp_DBCourseWork_sem5.ViewModels
 
                                 if (allowedTables.Contains(tableName))
                                 {
-                                    Tables.Add(new TableInfo()
+                                    if (allowedTables.Contains(tableName))
                                     {
-                                        Name = tableName,
-                                        DisplayName = displayName,
-                                    });
+                                        var table = new TableInfo() { Name = tableName, DisplayName = displayName };
+
+                                        string[] referenceTables = { "city", "street", "position", "profession", "department", "specialty", "qualification", "bank", "publisher", "author" };
+
+                                        if (referenceTables.Contains(tableName.ToLower()))
+                                            ReferenceTables.Add(table);
+                                        else
+                                            OtherTables.Add(table);
+                                    }
                                 }
                             }
                         }
@@ -112,8 +113,7 @@ namespace csharp_DBCourseWork_sem5.ViewModels
             }
             catch (Exception ex)
             {
-                ShowMessage($"Не удалось загрузить список таблиц:\n{FormatError(ex)}", isError: true);
-                LoadDataFailed?.Invoke($"Не удалось загрузить список таблиц:\n{ex.Message}", EventArgs.Empty);
+                HandleError(ex);
             }
         }
 
@@ -122,6 +122,7 @@ namespace csharp_DBCourseWork_sem5.ViewModels
             if (value == null) return;
 
             IsEditMode = false;
+            HighlightedRows = null;
             LoadTable(value);
         }
 
@@ -184,12 +185,11 @@ namespace csharp_DBCourseWork_sem5.ViewModels
             var sw = System.Diagnostics.Stopwatch.StartNew();
             try
             {
-                var dt = ParseRawSqService.SqlQuerry(RawSql);
+                var dt = ParseRawSqlService.SqlQuerry(RawSql);
                 TableData = dt.DefaultView;
                 _loadedTable = null;
 
-                ShowMessage($"Выполнено успешно.\nСтрок: {dt.Rows.Count}\nВремя: {sw.ElapsedMilliseconds} мс",
-                            isError: false);
+                ShowMessage($"Выполнено успешно.\nСтрок: {dt.Rows.Count}\nВремя: {sw.ElapsedMilliseconds} мс", isError: false);
                 SelectedTabIndex = 0;
             }
             catch (Exception ex)
@@ -214,13 +214,22 @@ namespace csharp_DBCourseWork_sem5.ViewModels
 
                 try
                 {
-                    _requiredColumns = TableEditService.GetRequiredColumns(_loadedTable.Name);
+                    _notNullColumns = TableEditService.GetNotNullColumns(_loadedTable.Name);
                     _primaryKey = TableEditService.GetPrimaryKey(_loadedTable.Name);
+
+                    if (_primaryKey.Count == 0)
+                    {
+                        ShowMessage($"Редактирование невозможно: у «{_loadedTable.DisplayName}» нет первичного ключа " +
+                                    "(это представление или таблица без PK).", isError: true);
+                        SelectedTabIndex = 1;
+                        return;
+                    }
+
                     EnableEditing();
                     IsEditMode = true;
 
-                    ShowMessage("Режим редактирования. Заполните пустую строку внизу таблицы и нажмите «Сохранить».",
-                                isError: false);
+                    ShowMessage("Режим редактирования. Измените значения в ячейках и нажмите «Сохранить». " +
+                                "Поля первичного ключа менять нельзя.", isError: false);
                 }
                 catch (Exception ex)
                 {
@@ -230,11 +239,11 @@ namespace csharp_DBCourseWork_sem5.ViewModels
             }
 
             bool hasPending = TableData?.Table?.Rows.Cast<DataRow>()
-                .Any(r => r.RowState == DataRowState.Added) == true;
+                .Any(r => r.RowState == DataRowState.Modified) == true;
 
             if (hasPending)
             {
-                var answer = MessageBox.Show("Есть несохранённые строки. Отменить их?", "Внимание",
+                var answer = MessageBox.Show("Есть несохранённые изменения. Отменить их?", "Внимание",
                                              MessageBoxButton.YesNo, MessageBoxImage.Question);
                 if (answer != MessageBoxResult.Yes) return;
             }
@@ -243,31 +252,53 @@ namespace csharp_DBCourseWork_sem5.ViewModels
             if (_loadedTable != null) LoadTable(_loadedTable);
         }
 
+        [RelayCommand]
+        private void AddNewRow()
+        {
+            if (TableData?.Table == null || !IsEditMode) return;
+
+            DataRow newRow = TableData.Table.NewRow();
+
+            TableData.Table.Rows.Add(newRow);
+        }
+
         [RelayCommand(CanExecute = nameof(IsEditMode))]
         private void SaveChanges()
         {
             var table = TableData?.Table;
             if (_loadedTable == null || table == null) return;
 
-            var added = table.Rows.Cast<DataRow>()
-                .Where(r => r.RowState == DataRowState.Added &&
-                            !table.Columns.Cast<DataColumn>().All(c => TableEditService.IsEmpty(r[c])))
+            var addedRows = table.Rows.Cast<DataRow>()
+                .Where(r => r.RowState == DataRowState.Added)
                 .ToList();
 
-            if (added.Count == 0)
+            var modifiedRows = table.Rows.Cast<DataRow>()
+                .Where(r => r.RowState == DataRowState.Modified)
+                .ToList();
+
+            if (addedRows.Count == 0 && modifiedRows.Count == 0)
             {
-                ShowMessage("Нет новых строк для сохранения.", isError: false);
+                ShowMessage("Нет изменений для сохранения.", isError: false);
                 SelectedTabIndex = 1;
                 return;
             }
 
             var errors = new List<string>();
-            foreach (var row in added)
+            var allRowsToSave = addedRows.Concat(modifiedRows).ToList();
+
+            foreach (var row in allRowsToSave)
             {
-                foreach (var col in _requiredColumns)
+                foreach (var col in _notNullColumns)
                 {
+                    if (col.Equals("id", StringComparison.OrdinalIgnoreCase) && row.RowState == DataRowState.Added)
+                    {
+                        continue;
+                    }
+
                     if (table.Columns.Contains(col) && TableEditService.IsEmpty(row[col]))
-                        errors.Add($"Строка {table.Rows.IndexOf(row) + 1}: поле «{col}» обязательно для заполнения");
+                    {
+                        errors.Add($"Строка {table.Rows.IndexOf(row) + 1}: поле «{col}» не может быть пустым");
+                    }
                 }
             }
 
@@ -280,12 +311,24 @@ namespace csharp_DBCourseWork_sem5.ViewModels
 
             try
             {
-                int count = TableEditService.InsertRows(_loadedTable.Name, added);
+                int totalCount = 0;
+
+                if (addedRows.Count > 0)
+                {
+                    int inserted = TableEditService.InsertRows(_loadedTable.Name, addedRows);
+                    totalCount += inserted;
+                }
+
+                if (modifiedRows.Count > 0)
+                {
+                    int updated = TableEditService.UpdateRows(_loadedTable.Name, _primaryKey, modifiedRows);
+                    totalCount += updated;
+                }
 
                 LoadTable(_loadedTable);
                 if (IsEditMode) EnableEditing();
 
-                ShowMessage($"Сохранено строк: {count}", isError: false);
+                ShowMessage($"Успешно сохранено строк: {totalCount}", isError: false);
                 SelectedTabIndex = 1;
             }
             catch (Exception ex)
@@ -297,8 +340,7 @@ namespace csharp_DBCourseWork_sem5.ViewModels
         [RelayCommand(CanExecute = nameof(IsEditMode))]
         private void DeleteRows()
         {
-            var table = TableData?.Table;
-            if (_loadedTable == null || table == null) return;
+            if (_loadedTable == null || TableData?.Table == null) return;
 
             var rows = SelectedRows.Select(r => r.Row)
                                    .Where(r => r.RowState != DataRowState.Detached)
@@ -312,74 +354,25 @@ namespace csharp_DBCourseWork_sem5.ViewModels
                 return;
             }
 
-            var unsaved = rows.Where(r => r.RowState == DataRowState.Added).ToList();
-            var saved = rows.Where(r => r.RowState != DataRowState.Added).ToList();
+            var answer = MessageBox.Show(
+                $"Удалить выбранные строки ({rows.Count}) из «{_loadedTable.DisplayName}»?\n\n" +
+                "Связанные записи будут удалены каскадом. Это действие необратимо.",
+                "Подтверждение удаления",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                MessageBoxResult.No);
+            if (answer != MessageBoxResult.Yes) return;
 
             try
             {
-                var dependents = new Dictionary<string, int>();
+                int deleted = TableEditService.DeleteRows(_loadedTable.Name, _primaryKey, rows);
 
-                if (saved.Count > 0)
+                foreach (var row in rows)
                 {
-                    if (_primaryKey.Count == 0)
-                    {
-                        ShowMessage($"Удаление невозможно: у «{_loadedTable.DisplayName}» нет первичного ключа " +
-                                    "(это представление или таблица без PK).", isError: true);
-                        SelectedTabIndex = 1;
-                        return;
-                    }
-
-                    dependents = TableEditService.PreviewDelete(_loadedTable.Name, _primaryKey, saved);
-                }
-
-                var text = new StringBuilder();
-                text.AppendLine($"Удалить выбранные строки ({rows.Count}) из «{_loadedTable.DisplayName}»?");
-
-                if (dependents.Count > 0)
-                {
-                    text.AppendLine();
-                    text.AppendLine("Вместе с ними будут удалены связанные записи:");
-                    foreach (var (name, count) in dependents.OrderBy(kv => kv.Key))
-                        text.AppendLine($"   • {name}: {count}");
-                }
-
-                if (saved.Count > 0)
-                {
-                    text.AppendLine();
-                    text.AppendLine("Это действие необратимо.");
-                }
-
-                var answer = MessageBox.Show(text.ToString(), "Подтверждение удаления",
-                                             MessageBoxButton.YesNo, MessageBoxImage.Warning,
-                                             MessageBoxResult.No);
-                if (answer != MessageBoxResult.Yes) return;
-
-                var deleted = new Dictionary<string, int>();
-                if (saved.Count > 0)
-                {
-                    deleted = TableEditService.DeleteRows(_loadedTable.Name, _primaryKey, saved);
-
-                    foreach (var row in saved)
-                    {
-                        row.Delete();
-                        row.AcceptChanges();
-                    }
-                }
-
-                foreach (var row in unsaved)
                     row.Delete();
-
-                var report = new StringBuilder();
-                if (saved.Count > 0)
-                {
-                    report.AppendLine("Удаление выполнено.");
-                    foreach (var (name, count) in deleted)
-                        report.AppendLine($"   {name}: {count}");
+                    row.AcceptChanges();
                 }
-                if (unsaved.Count > 0)
-                    report.AppendLine($"Отменено несохранённых строк: {unsaved.Count}");
 
-                ShowMessage(report.ToString().TrimEnd(), isError: false);
+                ShowMessage($"Удалено строк: {deleted}", isError: false);
             }
             catch (Exception ex)
             {
@@ -391,7 +384,8 @@ namespace csharp_DBCourseWork_sem5.ViewModels
         {
             if (TableData == null) return;
 
-            TableData.AllowNew = true;
+            TableData.AllowEdit = true;
+            TableData.AllowNew = false;
             TableData.AllowDelete = false;
 
             foreach (DataColumn col in TableData.Table!.Columns)
@@ -419,24 +413,34 @@ namespace csharp_DBCourseWork_sem5.ViewModels
                 MessageBox.Show($"Ошибка при экспорте:\n{ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-
         [RelayCommand]
         private void Search()
         {
+            var searcher = new SearchService();
+
             try
             {
-                if (TableData == null)
-                {
-                    MessageBox.Show("Сначала выберите таблицу!", "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-                var searcher = new SearchService();
                 HighlightedRows = searcher.Search(TableData, SearchInput);
             }
             catch
             {
                 HighlightedRows = null;
+            }
+
+            try
+            {
+                var allTables = ReferenceTables.Concat(OtherTables).ToList();
+                HighlightedTables = searcher.Search(allTables, SearchInput);
+            }
+            catch
+            {
+                HighlightedTables = null;
+            }
+
+            var firstMatch = HighlightedTables?.FirstOrDefault();
+            if (firstMatch != null && !ReferenceEquals(firstMatch, SelectedTable))
+            {
+                SelectedTable = firstMatch;
             }
         }
 

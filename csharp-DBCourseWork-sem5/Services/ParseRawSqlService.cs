@@ -4,7 +4,7 @@ using System.Data;
 
 namespace csharp_DBCourseWork_sem5.Services
 {
-    public static class ParseRawSqService
+    public static class ParseRawSqlService
     {
         public static DataTable SqlQuerry(string rawSql)
         {

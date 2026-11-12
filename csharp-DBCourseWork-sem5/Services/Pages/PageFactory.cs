@@ -1,6 +1,7 @@
-﻿using System.Windows.Controls;
+﻿using csharp_DBCourseWork_sem5.Pages;
+using System.Windows.Controls;
 
-namespace csharp_DBCourseWork_sem5.Services
+namespace csharp_DBCourseWork_sem5.Services.Pages
 {
     public static class PageFactory
     {
@@ -8,6 +9,7 @@ namespace csharp_DBCourseWork_sem5.Services
         {
             "Руководство пользователя" => new UserManualPage(),
             "О программе" => new AboutPage(),
+            "Аналитика" => new AnalyticsPage(),
             _ => throw new ArgumentException($"Нет страницы «{name}»")
         };
     }

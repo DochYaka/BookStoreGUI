@@ -50,11 +50,17 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
+            <StackPanel Orientation="Horizontal">
+                <!-- Кнопка "Выполнить" -->
+                <Button Grid.Row="0" Content="▶" Style="{StaticResource SubMenuButton}" Width="30" Height="30" Margin="3" 
+                        Command="{Binding RunCommand}" ToolTip="Запустить скрипт F5"/>
+                
+                <!-- Окно аналитики -->
+                <Button Grid.Row="0" Tag="Аналитика" Content="Аналитика" Style="{StaticResource SubMenuButton}" Width="120" Margin="3"
+                        Click="OpenPage_Click" ToolTip="Открыть раздел"/>
 
-            <!-- Кнопка "Выполнить" -->
-            <Button Grid.Row="0" Width="30" Height="30" Margin="2" BorderThickness="0" Content="▶" Command="{Binding RunCommand}"
-                    Style="{StaticResource SubMenuButton}" ToolTip="Запустить скрипт F5" HorizontalAlignment="Left"/>
-
+            </StackPanel>
+            
             <!-- Поле ввода SQL -->
             <Border Grid.Row="1" Background="#FF222121">
                 <RichTextBox x:Name="rtbRawSql" 
@@ -87,6 +93,13 @@
                         <Button Width="30" Height="30" Margin="2" BorderThickness="0" Content="✎"
                             Command="{Binding ToggleEditCommand}"
                             Style="{StaticResource SubMenuButton}" ToolTip="Режим редактирования"/>
+                        
+                        <!-- Добавить стрку -->
+                        <Button Width="30" Height="30" Margin="2" BorderThickness="0" 
+                                Command="{Binding AddNewRowCommand}"
+                                Style="{StaticResource SubMenuButton}" ToolTip="Добавить строку">
+                            <TextBlock Text="+" FontSize="20" Foreground="White"/>
+                        </Button>
 
                         <!-- Сохранить изменения (виден только в режиме редактирования) -->
                         <Button Width="30" Height="30" Margin="2" BorderThickness="0" Content="💾"
@@ -120,10 +133,6 @@
                                 Style="{StaticResource SubMenuButton}">
                             <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE896;" FontSize="15" Foreground="White"/>
                         </Button>
-
-                        <!-- Кнопка вывода аналитики (remake soon) -->
-                        <Button Width="100" Height="30" BorderThickness="0" Content="Аналитика"
-                                Style="{StaticResource SubMenuButton}"/>
                     </StackPanel>
 
                     <!-- DataGrid -->
@@ -142,10 +151,10 @@
             <!-- Панель сообщений -->
             <TabItem Header="Messages">
                 <TextBox Text="{Binding Messages, Mode=OneWay}"
-             IsReadOnly="True" TextWrapping="Wrap"
-             VerticalScrollBarVisibility="Auto"
-             Background="Transparent" BorderThickness="0"
-             FontFamily="Consolas" FontSize="14" Margin="5">
+                     IsReadOnly="True" TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto"
+                     Background="Transparent" BorderThickness="0"
+                     FontFamily="Consolas" FontSize="14" Margin="5">
                     <TextBox.Style>
                         <Style TargetType="TextBox">
                             <Setter Property="Foreground" Value="White"/>
@@ -158,6 +167,7 @@
                     </TextBox.Style>
                 </TextBox>
             </TabItem>
+       
         </TabControl>
 
         <!-- Верхняя черная панель и кнопки -->
@@ -182,25 +192,41 @@
             </Label.ContextMenu>
         </Label>
 
-        <!-- Страница справки (Frame) -->
         <Frame Grid.Row="1" Grid.RowSpan="3" Grid.ColumnSpan="3" Name="fmPage" 
                NavigationUIVisibility="Hidden" Visibility="Collapsed" Panel.ZIndex="2"/>
 
-        <!-- Дерево таблиц (TreeView) -->
-        <TreeView Grid.Row="1" Grid.RowSpan="3" Grid.Column="0" ItemsSource="{Binding Tables}" 
-                  BorderThickness="0" Background="#FF222121" Foreground="White"
-                  FontSize="16" SelectedItemChanged="TreeView_SelectedItemChanged">
-            <TreeView.ItemContainerStyle>
-                <Style TargetType="TreeViewItem">
-                    <Setter Property="Foreground" Value="White"/>
-                    <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-                </Style>
-            </TreeView.ItemContainerStyle>
-            <TreeView.ItemTemplate>
-                <DataTemplate>
-                    <TextBlock Text="{Binding DisplayName}" />
-                </DataTemplate>
-            </TreeView.ItemTemplate>
+        <TreeView Grid.Row="1" Grid.RowSpan="3" Grid.Column="0" 
+          BorderThickness="0" Background="#FF222121" Foreground="White"
+          FontSize="14" SelectedItemChanged="TreeView_SelectedItemChanged">
+
+            <TreeViewItem IsExpanded="True">
+                <TreeViewItem.Header>
+                    <TextBlock Text="Справочники" Style="{StaticResource TreeGroupHeader}"/>
+                </TreeViewItem.Header>
+                <TreeViewItem.ItemsSource>
+                    <Binding Path="ReferenceTables"/>
+                </TreeViewItem.ItemsSource>
+                <TreeViewItem.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding DisplayName}" Margin="5,2,0,2"/>
+                    </DataTemplate>
+                </TreeViewItem.ItemTemplate>
+            </TreeViewItem>
+            
+            <TreeViewItem IsExpanded="True">
+                <TreeViewItem.Header>
+                    <TextBlock Text="Рабочие данные" Style="{StaticResource TreeGroupHeader}"/>
+                </TreeViewItem.Header>
+                <TreeViewItem.ItemsSource>
+                    <Binding Path="OtherTables"/>
+                </TreeViewItem.ItemsSource>
+                <TreeViewItem.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding DisplayName}" Margin="5,2,0,2"/>
+                    </DataTemplate>
+                </TreeViewItem.ItemTemplate>
+            </TreeViewItem>
+
         </TreeView>
 
     </Grid>
