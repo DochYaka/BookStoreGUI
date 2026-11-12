@@ -164,4 +164,94 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <SolidColorBrush x:Key="LoginPanelBackground" Color="#80FFFFFF"/>
+    <SolidColorBrush x:Key="LoginBorderBrush" Color="White"/>
+    <SolidColorBrush x:Key="LoginTextForeground" Color="White"/>
+    <SolidColorBrush x:Key="LoginButtonBackground" Color="#80FFFFFF"/>
+
+    <Style x:Key="LoginPanelStyle" TargetType="Border">
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="BorderThickness" Value="2.5"/>
+        <Setter Property="BorderBrush" Value="{StaticResource LoginBorderBrush}"/>
+        <Setter Property="Padding" Value="8,0"/>
+        <Setter Property="Margin" Value="3"/>
+    </Style>
+
+    <Style x:Key="LoginTextBoxStyle" TargetType="TextBox">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Foreground" Value="{StaticResource LoginTextForeground}"/>
+        <Setter Property="Height" Value="40"/>
+        <Setter Property="MinWidth" Value="150"/>
+        <Setter Property="MaxWidth" Value="150"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+
+    <Style x:Key="LoginPasswordBoxStyle" TargetType="PasswordBox">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Foreground" Value="{StaticResource LoginTextForeground}"/>
+        <Setter Property="Height" Value="40"/>
+        <Setter Property="MinWidth" Value="150"/>
+        <Setter Property="MaxWidth" Value="150"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+
+    <Style x:Key="LoginButtonBorderStyle" TargetType="Border">
+        <Setter Property="Height" Value="50"/>
+        <Setter Property="Width" Value="240"/>
+        <Setter Property="BorderThickness" Value="0.5"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="Background" Value="{StaticResource LoginButtonBackground}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Padding" Value="8,0"/>
+        <Setter Property="VerticalAlignment" Value="Bottom"/>
+        <Setter Property="Margin" Value="0 0 0 50"/>
+    </Style>
+
+    <Style x:Key="LoginButtonTextStyle" TargetType="TextBlock">
+        <Setter Property="Text" Value="Войти"/>
+        <Setter Property="Foreground" Value="{StaticResource LoginTextForeground}"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style x:Key="TopBarLabelStyle" TargetType="Label">
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="Width" Value="40"/>
+        <Setter Property="Margin" Value="2"/>
+        <Setter Property="Padding" Value="4,4,5,5"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Top"/>
+    </Style>
+
+    <SolidColorBrush x:Key="MainBackground" Color="#FF222121"/>
+    <SolidColorBrush x:Key="PanelBackground" Color="#FF454141"/>
+    <SolidColorBrush x:Key="WindowText" Color="White"/>
+    <SolidColorBrush x:Key="SplitterBackground" Color="#FF454141"/>
+    <SolidColorBrush x:Key="SqlEditorBackground" Color="#FF222121"/>
+    <SolidColorBrush x:Key="TopBarBackground" Color="Black"/>
+
+    <Style x:Key="MainTabControl" TargetType="TabControl">
+        <Setter Property="Background" Value="{DynamicResource MainBackground}"/>
+        <Setter Property="Foreground" Value="{DynamicResource WindowText}"/>
+        <Setter Property="FontSize" Value="18"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+
+    <Style x:Key="MainDataGrid" TargetType="DataGrid">
+        <Setter Property="Foreground" Value="{DynamicResource WindowText}"/>
+        <Setter Property="Background" Value="{DynamicResource MainBackground}"/>
+        <Setter Property="RowBackground" Value="{DynamicResource MainBackground}"/>
+        <Setter Property="AlternatingRowBackground" Value="#FF2A2A2A"/>
+        <Setter Property="GridLinesVisibility" Value="None"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+
+    <Style x:Key="SqlRichTextBox" TargetType="RichTextBox">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource WindowText}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
 </ResourceDictionary>

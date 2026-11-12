@@ -206,12 +206,12 @@ namespace csharp_DBCourseWork_sem5.ViewModels
             try
             {
                 var kpi = new List<(string, string)>
-        {
-            ("Выручка", Revenue),
-            ("Заказов", Orders),
-            ("Средний чек", AvgCheck),
-            ("Прибыль", Profit),
-        };
+                {
+                    ("Выручка", Revenue),
+                    ("Заказов", Orders),
+                    ("Средний чек", AvgCheck),
+                    ("Прибыль", Profit),
+                };
 
                 var byMonth = ByMonth.Select(b => (b.Label, b.ValueText)).ToList();
                 var topBooks = TopBooks.Select(b => (b.Label, b.ValueText)).ToList();

@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace csharp_DBCourseWork_sem5.Services
+namespace csharp_DBCourseWork_sem5.Services.Tables
 {
     public static class ColumnTranslator
     {

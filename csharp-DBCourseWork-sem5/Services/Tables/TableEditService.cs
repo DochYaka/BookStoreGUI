@@ -202,5 +202,59 @@ namespace csharp_DBCourseWork_sem5.Services
             foreach (var (name, value) in ps) AddParam(cmd, name, value);
             return cmd.ExecuteNonQuery();
         }
+
+        public static Dictionary<string, object> GetDefaultValues(string tableName)
+        {
+            var defaults = new Dictionary<string, object>();
+
+            using var db = new BookStoreDbContext();
+            db.Database.OpenConnection();
+            var conn = db.Database.GetDbConnection();
+
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT column_name, column_default, data_type 
+                FROM information_schema.columns 
+                WHERE table_schema = 'public' AND table_name = @t";
+
+            var p = cmd.CreateParameter();
+            p.ParameterName = "t";
+            p.Value = tableName;
+            cmd.Parameters.Add(p);
+
+            var columnsWithDefaults = new List<(string Name, string DefaultExpr, string DataType)>();
+
+            using (var reader = cmd.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    string name = reader.GetString(0);
+                    string defaultExpr = reader.IsDBNull(1) ? null : reader.GetString(1);
+                    string dataType = reader.GetString(2);
+
+                    if (!string.IsNullOrEmpty(defaultExpr))
+                        columnsWithDefaults.Add((name, defaultExpr, dataType));
+                }
+            }
+
+            if (columnsWithDefaults.Count > 0)
+            {
+                string selectList = string.Join(", ", columnsWithDefaults.Select(c => $"{c.DefaultExpr} AS \"{c.Name}\""));
+                using var cmdDefaults = conn.CreateCommand();
+                cmdDefaults.CommandText = $"SELECT {selectList}";
+
+                using var reader = cmdDefaults.ExecuteReader();
+                if (reader.Read())
+                {
+                    for (int i = 0; i < columnsWithDefaults.Count; i++)
+                    {
+                        if (!reader.IsDBNull(i))
+                            defaults[columnsWithDefaults[i].Name] = reader.GetValue(i);
+                    }
+                }
+            }
+
+            return defaults;
+        }
     }
 }

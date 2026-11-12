@@ -6,7 +6,7 @@ namespace csharp_DBCourseWork_sem5.Services
 {
     public static class ParseRawSqlService
     {
-        public static DataTable SqlQuerry(string rawSql)
+        public static DataTable SqlQuery(string rawSql)
         {
             using var db = new BookStoreDbContext();
             db.Database.OpenConnection();

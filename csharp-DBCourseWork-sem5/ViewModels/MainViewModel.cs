@@ -185,7 +185,7 @@ namespace csharp_DBCourseWork_sem5.ViewModels
             var sw = System.Diagnostics.Stopwatch.StartNew();
             try
             {
-                var dt = ParseRawSqlService.SqlQuerry(RawSql);
+                var dt = ParseRawSqlService.SqlQuery(RawSql);
                 TableData = dt.DefaultView;
                 _loadedTable = null;
 
@@ -255,9 +255,24 @@ namespace csharp_DBCourseWork_sem5.ViewModels
         [RelayCommand]
         private void AddNewRow()
         {
-            if (TableData?.Table == null || !IsEditMode) return;
+            if (TableData?.Table == null || !IsEditMode || _loadedTable == null) return;
 
             DataRow newRow = TableData.Table.NewRow();
+
+            try
+            {
+                var defaults = TableEditService.GetDefaultValues(_loadedTable.Name);
+
+                foreach (var kvp in defaults)
+                {
+                    if (TableData.Table.Columns.Contains(kvp.Key))
+                        newRow[kvp.Key] = kvp.Value;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка загрузки значений по умолчанию: {ex.Message}");
+            }
 
             TableData.Table.Rows.Add(newRow);
         }
@@ -291,15 +306,60 @@ namespace csharp_DBCourseWork_sem5.ViewModels
                 foreach (var col in _notNullColumns)
                 {
                     if (col.Equals("id", StringComparison.OrdinalIgnoreCase) && row.RowState == DataRowState.Added)
-                    {
                         continue;
-                    }
 
                     if (table.Columns.Contains(col) && TableEditService.IsEmpty(row[col]))
+                        errors.Add($"Строка {table.Rows.IndexOf(row) + 1}: поле «{ColumnTranslator.GetDisplayName(col)}» не может быть пустым");
+                }
+
+                foreach (DataColumn col in table.Columns)
+                {
+                    var value = row[col];
+                    if (TableEditService.IsEmpty(value)) continue;
+
+                    string colName = ColumnTranslator.GetDisplayName(col.ColumnName);
+                    string strValue = value.ToString()!.Trim();
+                    int rowNum = table.Rows.IndexOf(row) + 1;
+
+                    if (col.DataType == typeof(string) && col.MaxLength > 0 && strValue.Length > col.MaxLength)
                     {
-                        errors.Add($"Строка {table.Rows.IndexOf(row) + 1}: поле «{col}» не может быть пустым");
+                        errors.Add($"Строка {rowNum}: поле «{colName}» превышает {col.MaxLength} символов");
+                    }
+
+                    if (col.DataType == typeof(int) || col.DataType == typeof(decimal))
+                    {
+                        if (!decimal.TryParse(strValue, out decimal numValue))
+                        {
+                            errors.Add($"Строка {rowNum}: в поле «{colName}» должно быть число");
+                        }
+                        else
+                        {
+                            if (col.ColumnName == "year" && numValue < 868)
+                                errors.Add($"Строка {rowNum}: год не может быть меньше 868");
+                            if (col.ColumnName == "sale_price" && numValue <= 0)
+                                errors.Add($"Строка {rowNum}: цена должна быть больше 0");
+                            if (col.ColumnName == "purchase_price" && numValue <= 0)
+                                errors.Add($"Строка {rowNum}: цена должна быть больше 0");
+                            if (col.ColumnName == "quantity" && numValue < 0)
+                                errors.Add($"Строка {rowNum}: количество не может быть отрицательным");
+                        }
+                    }
+
+                    if (col.DataType == typeof(DateTime) || col.DataType == typeof(DateOnly))
+                    {
+                        if (!DateTime.TryParse(strValue, out _) && !DateOnly.TryParse(strValue, out _))
+                        {
+                            errors.Add($"Строка {rowNum}: в поле «{colName}» должна быть дата");
+                        }
                     }
                 }
+            }
+
+            if (errors.Count > 0)
+            {
+                ShowMessage("Сохранение отменено:\n" + string.Join("\n", errors), isError: true);
+                SelectedTabIndex = 1;
+                return;
             }
 
             if (errors.Count > 0)

@@ -70,23 +70,26 @@
             </Border>
         </Grid>
 
-        <Button Content="x" Foreground="white" ToolTip="Закрыть" Grid.Column="2" HorizontalAlignment="Right" 
-                Margin="0,5,10,0" Background="Transparent" BorderThickness="0" Click="Close_Click" IsCancel="True">
-            <Button.Template>
-                <ControlTemplate TargetType="Button">
-                    <ContentPresenter/>
-                </ControlTemplate>
-            </Button.Template>
-        </Button>
+        <StackPanel Orientation="Horizontal" Grid.Column="1" Grid.ColumnSpan="2" Width="auto" HorizontalAlignment="Right">
+            <Label Content="⚙" Foreground="White" Width="40" Margin="2" Padding="4,4,5,5" MouseLeftButtonDown="OpenSettings_Click"/>
 
-        <Label Grid.Column="2" Content="?" Foreground="white" HorizontalAlignment="Right" Margin="0,2,35,0" ToolTip="Справка" Cursor="Help" >
-            <Label.ContextMenu>
-                <ContextMenu>
-                    <MenuItem Header="Руководство пользователя" Click="OpenPage_Click"/>
-                    <MenuItem Header="О программе" Click="OpenPage_Click"/>
-                </ContextMenu>
-            </Label.ContextMenu>
-        </Label>
+            <Label Content="?" Foreground="white" Width="40" ToolTip="Справка" Cursor="Help" 
+                   HorizontalContentAlignment="Center" Margin="2">
+                <Label.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Руководство пользователя" Click="OpenPage_Click"/>
+                        <MenuItem Header="О программе" Click="OpenPage_Click"/>
+                    </ContextMenu>
+                </Label.ContextMenu>
+            </Label>
+
+            <Button Content="x" Foreground="white" ToolTip="Закрыть" Width="40" HorizontalContentAlignment="Center"
+                    Background="Transparent" BorderThickness="0" Click="Close_Click" IsCancel="True" Margin="2" Padding="10,3,10,5"/>
+        </StackPanel>
+
+
+        <Label Grid.Row="3" Grid.ColumnSpan="2" Content="Забыли пароль?" Foreground="White" VerticalAlignment="Bottom"
+               MouseLeftButtonDown="ChangePassword_Click"/>
 
         <Frame Grid.Row="1" Grid.RowSpan="2" Grid.ColumnSpan="3" Name="fmPage" NavigationUIVisibility="Hidden" Visibility="Collapsed"/>
     </Grid>

@@ -18,6 +18,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Page Remove="Styles\LightTheme.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.105.1" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Abstractions" Version="10.0.13" />
@@ -40,6 +44,12 @@
     <Resource Include="Images\MainWinBack.jpg" />
     <Resource Include="Images\UserIcon.png" />
     <Resource Include="Images\UserIcon2.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Styles\LightTheme.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Resource>
   </ItemGroup>
 
 </Project>

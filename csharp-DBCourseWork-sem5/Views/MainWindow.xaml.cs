@@ -1,6 +1,6 @@
 ﻿using csharp_DBCourseWork_sem5.Models;
-using csharp_DBCourseWork_sem5.Services;
 using csharp_DBCourseWork_sem5.Services.Pages;
+using csharp_DBCourseWork_sem5.Services.Tables;
 using csharp_DBCourseWork_sem5.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
@@ -31,8 +31,6 @@ namespace csharp_DBCourseWork_sem5
 
             Closing += (s, e) => new LoginWindow().Show();
         }
-
-
 
         private void OnLoadDataFailed(object? sender, EventArgs e)
             => MessageBox.Show($"Ошибка вывода таблиц", "Ошибка подключения", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -128,6 +126,25 @@ namespace csharp_DBCourseWork_sem5
         {
             dgData.CommitEdit(DataGridEditingUnit.Cell, true);
             dgData.CommitEdit(DataGridEditingUnit.Row, true);
+        }
+    
+        private void InputRequest_Click(object sender, RoutedEventArgs e)
+        {
+            string queries =
+                "-- 1. Книги дороже 500 рублей\n" +
+                "SELECT name, year, sale_price FROM copy c\r\nJOIN book b ON c.book_id = b.id\r\n WHERE sale_price > 500 ORDER BY sale_price DESC;\n\n" +
+                "-- 2. Количество книг у каждого автора\n" +
+                "SELECT a.last_name, a.first_name, COUNT(ab.book_id) \r\nFROM author a \r\nLEFT JOIN author_book ab ON a.id = ab.author_id \r\nGROUP BY a.id, a.last_name, a.first_name \r\nORDER BY COUNT(ab.book_id) DESC;\r\n\n\n" +
+                "-- 3. Сумма продаж по клиентам\n" +
+                "SELECT p.name, COUNT(pb.book_id) \r\nFROM publisher  p\r\nLEFT JOIN publisher_book pb ON p.id = pb.publishing_house_id \r\nGROUP BY p.id, p.name \r\nORDER BY COUNT(pb.book_id) DESC;\r\n";
+
+            rtbRawSql.Document = new FlowDocument(new Paragraph(new Run(queries)));
+        }
+
+        private void OpenSettings_Click(object sender, RoutedEventArgs e)
+        {
+            var settingsWindow = new SettingsWindow();
+            settingsWindow.ShowDialog();
         }
     }
 }

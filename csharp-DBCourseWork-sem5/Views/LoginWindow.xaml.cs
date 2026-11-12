@@ -1,10 +1,8 @@
-﻿using csharp_DBCourseWork_sem5.Models;
-using csharp_DBCourseWork_sem5.ViewModels;
+﻿using csharp_DBCourseWork_sem5.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using CommunityToolkit.Mvvm.ComponentModel;
 using csharp_DBCourseWork_sem5.Services.Pages;
 
 namespace csharp_DBCourseWork_sem5
@@ -64,6 +62,12 @@ namespace csharp_DBCourseWork_sem5
                 vm.Password = ((PasswordBox)sender).Password;
         }
 
+        private void ChangePassword_Click(object sender, RoutedEventArgs e)
+        {
+            var changeWindow = new ChangePasswordWindow();
+            changeWindow.ShowDialog();
+        }
+
         /// <summary>
         /// Смена цвета для Border
         /// </summary>
@@ -96,6 +100,12 @@ namespace csharp_DBCourseWork_sem5
                 fmPage.Content = null;
                 fmPage.Visibility = Visibility.Collapsed;
             }
+        }
+
+        private void OpenSettings_Click(object sender, RoutedEventArgs e)
+        {
+            var settingsWindow = new SettingsWindow();
+            settingsWindow.ShowDialog();
         }
     }
 }
