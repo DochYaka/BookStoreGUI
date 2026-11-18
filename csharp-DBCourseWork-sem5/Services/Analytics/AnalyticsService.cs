@@ -5,14 +5,26 @@ using System.Data;
 
 namespace csharp_DBCourseWork_sem5.Services
 {
-    public static class AnalyticsService
+    public interface IAnalyticsService
     {
-        private static readonly ConcurrentDictionary<string, (DateTime At, DataTable Table)> _cache = new();
+        Task<DataTable> QueryAsync(string sql, params (string Name, object Value)[] parameters);
+        void ClearCache();
+    }
+
+    public class AnalyticsService : IAnalyticsService
+    {
         private static readonly TimeSpan CacheLifetime = TimeSpan.FromMinutes(5);
 
-        public static void ClearCache() => _cache.Clear();
+        private readonly IDbContextFactory<AppDbContext> _factory;
 
-        public static Task<DataTable> QueryAsync(string sql, params (string Name, object Value)[] parameters)
+        // Кэш теперь принадлежит экземпляру (сервис регистрируется как singleton)
+        private readonly ConcurrentDictionary<string, (DateTime At, DataTable Table)> _cache = new();
+
+        public AnalyticsService(IDbContextFactory<AppDbContext> factory) => _factory = factory;
+
+        public void ClearCache() => _cache.Clear();
+
+        public Task<DataTable> QueryAsync(string sql, params (string Name, object Value)[] parameters)
         {
             string key = sql + "|" + string.Join(";", parameters.Select(p => $"{p.Name}={p.Value}"));
 
@@ -21,7 +33,7 @@ namespace csharp_DBCourseWork_sem5.Services
 
             return Task.Run(() =>
             {
-                using var db = new BookStoreDbContext();
+                using var db = _factory.CreateDbContext();
                 db.Database.OpenConnection();
 
                 using var command = db.Database.GetDbConnection().CreateCommand();

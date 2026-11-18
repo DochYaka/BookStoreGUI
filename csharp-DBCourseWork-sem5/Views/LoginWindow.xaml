@@ -8,9 +8,6 @@
         mc:Ignorable="d"
         Title="LoginWindow" Height="450" Width="450" WindowStyle="None" 
         FontFamily="Bahnschrift" FontSize="25" WindowStartupLocation="CenterScreen" ResizeMode="NoResize" Visibility="Visible">
-    <Window.DataContext>
-        <vm:LoginViewModel />
-    </Window.DataContext>
     <Window.InputBindings>
         <KeyBinding Gesture="Enter" Command="{Binding LoginCommand}"/>
     </Window.InputBindings>

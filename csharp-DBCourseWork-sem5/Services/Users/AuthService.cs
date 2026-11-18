@@ -1,4 +1,5 @@
 ﻿using csharp_DBCourseWork_sem5.Models;
+using csharp_DBCourseWork_sem5.Models.Interfaces;
 using csharp_DBCourseWork_sem5.Services;
 using csharp_DBCourseWork_sem5.Services.Users;
 using Npgsql;
@@ -8,13 +9,18 @@ namespace csharp_DBCourseWork_sem5.Services
 {
     public class AuthService
     {
-        public LoginResult TryLogin(string login, string password)
+        private readonly IUsersRepository _usersRepository;
+
+        public AuthService(IUsersRepository usersRepository)
+        {
+            _usersRepository = usersRepository;
+        }
+
+        public async Task<LoginResult> TryLogin(string login, string password)
         {
             try
             {
-                using var db = new BookStoreDbContext();
-
-                var user = db.Users.FirstOrDefault(u => u.Login == login);
+                var user = await _usersRepository.GetUserByLoginAsync(login);
                 if (user == null) return LoginResult.InvalidCredentials;
 
                 string pass = PasswordHasherService.HashPassword(password, user.Salt);

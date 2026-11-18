@@ -7,8 +7,7 @@ namespace csharp_DBCourseWork_sem5.ViewModels
 {
     public partial class LoginViewModel : ObservableObject
     {
-        private AuthService _authService;
-        private readonly DatabaseWarmupService _warmupService;
+        private readonly AuthService _authService;
 
         public event EventHandler? LoginSucceeded;
         public event EventHandler? LoginFailed;
@@ -21,35 +20,42 @@ namespace csharp_DBCourseWork_sem5.ViewModels
         [ObservableProperty]
         private string _password = "";
 
-        public LoginViewModel()
+        public LoginViewModel(AuthService authService, DatabaseWarmupService warmupService)
         {
-            _authService = new AuthService();
-            _warmupService = new DatabaseWarmupService();
-            _ = _warmupService.WarmupAsync();
+            _authService = authService;
+
+            _ = warmupService.WarmupAsync();
         }
 
         [RelayCommand]
-        private void Login()
+        private async Task LoginAsync()
         {
-            var res = _authService.TryLogin(UserName, Password);
+            LoginResult res;
+            try
+            {
+                res = await _authService.TryLogin(UserName, Password);
+            }
+            catch
+            {
+                UnknownError?.Invoke(this, EventArgs.Empty);
+                return;
+            }
 
             switch (res)
             {
                 case LoginResult.Success:
-                    LoginSucceeded.Invoke(this, EventArgs.Empty);
+                    LoginSucceeded?.Invoke(this, EventArgs.Empty);
                     break;
                 case LoginResult.InvalidCredentials:
-                    LoginFailed.Invoke(this, EventArgs.Empty);
+                    LoginFailed?.Invoke(this, EventArgs.Empty);
                     break;
                 case LoginResult.DatabaseUnavailable:
-                    DbConnectFailed.Invoke(this, EventArgs.Empty);
+                    DbConnectFailed?.Invoke(this, EventArgs.Empty);
                     break;
                 default:
-                    UnknownError.Invoke(this, EventArgs.Empty);
+                    UnknownError?.Invoke(this, EventArgs.Empty);
                     break;
             }
         }
-
-
     }
 }

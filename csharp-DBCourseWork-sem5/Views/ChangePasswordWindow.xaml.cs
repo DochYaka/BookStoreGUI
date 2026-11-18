@@ -1,18 +1,20 @@
-﻿using csharp_DBCourseWork_sem5.Models;
+﻿using csharp_DBCourseWork_sem5.Models.Interfaces;
 using csharp_DBCourseWork_sem5.Services;
-using System;
 using System.Windows;
 
 namespace csharp_DBCourseWork_sem5
 {
     public partial class ChangePasswordWindow : Window
     {
-        public ChangePasswordWindow()
+        private readonly IUsersRepository _users;
+
+        public ChangePasswordWindow(IUsersRepository users)
         {
             InitializeComponent();
+            _users = users;
         }
 
-        private void btnChangePassword_Click(object sender, RoutedEventArgs e)
+        private async void btnChangePassword_Click(object sender, RoutedEventArgs e)
         {
             string login = txtLogin.Text.Trim();
             string oldPass = txtOldPassword.Password;
@@ -33,9 +35,7 @@ namespace csharp_DBCourseWork_sem5
 
             try
             {
-                using var db = new BookStoreDbContext();
-
-                var user = db.Users.FirstOrDefault(u => u.Login == login);
+                var user = await _users.GetUserByLoginAsync(login);
                 if (user == null)
                 {
                     MessageBox.Show("Пользователь с таким логином не найден!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -54,10 +54,10 @@ namespace csharp_DBCourseWork_sem5
 
                 user.Salt = newSalt;
                 user.PasswordHash = newHash;
-                db.SaveChanges();
+                await _users.SaveUserAsync(user);
 
                 MessageBox.Show("Пароль успешно изменен! Теперь вы можете войти с новым паролем.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
-                this.Close();
+                Close();
             }
             catch (Exception ex)
             {

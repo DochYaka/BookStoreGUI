@@ -1,19 +1,31 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using csharp_DBCourseWork_sem5.Models;
+using csharp_DBCourseWork_sem5.Models.Interfaces;
 using csharp_DBCourseWork_sem5.Services;
-using csharp_DBCourseWork_sem5.Services.Tables;
-using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using System.Collections.ObjectModel;
 using System.Data;
-using System.Windows;
-using System.Windows.Documents;
+using System.Diagnostics;
 
 namespace csharp_DBCourseWork_sem5.ViewModels
 {
     public partial class MainViewModel : ObservableObject
     {
+        private static readonly HashSet<string> ReferenceTableNames = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "city", "street", "position", "profession", "department",
+            "specialty", "qualification", "bank", "publisher", "author"
+        };
+
+        private readonly ITableCatalogRepository _catalog;
+        private readonly ITableDataRepository _data;
+        private readonly IRowValidator _validator;
+        private readonly IDialogService _dialogs;
+        private readonly IUserSession _session;
+        private readonly IExportService _export;
+        private readonly ISearchService _search;
+
         public event EventHandler? LoadDataFailed;
         public event EventHandler? ConnectionFailed;
 
@@ -30,7 +42,7 @@ namespace csharp_DBCourseWork_sem5.ViewModels
 
         [ObservableProperty] private DataRow[]? _highlightedRows;
 
-        [ObservableProperty] private TableInfo[] _highlightedTables;
+        [ObservableProperty] private TableInfo[]? _highlightedTables;
 
         [ObservableProperty] private IList<DataRowView> _selectedRows = new List<DataRowView>();
 
@@ -55,60 +67,36 @@ namespace csharp_DBCourseWork_sem5.ViewModels
 
         public bool IsKeyColumn(string columnName) => _primaryKey.Contains(columnName);
 
-        public MainViewModel()
+        public MainViewModel(
+            ITableCatalogRepository catalog,
+            ITableDataRepository data,
+            IRowValidator validator,
+            IDialogService dialogs,
+            IUserSession session,
+            IExportService export,
+            ISearchService search)
         {
-            LoadTables();
+            _catalog = catalog;
+            _data = data;
+            _validator = validator;
+            _dialogs = dialogs;
+            _session = session;
+            _export = export;
+            _search = search;
         }
+
+        public void Initialize() => LoadTables();
 
         private void LoadTables()
         {
             try
             {
-                using (BookStoreDbContext db = new BookStoreDbContext())
+                foreach (var table in _catalog.GetAllowedTables(_session.CurrentRole))
                 {
-                    var role = UserSession._currentRole;
-
-                    var allowedTables = db.Rolepermissions
-                        .Where(r => r.Role == role)
-                        .Select(r => r.TableName)
-                        .ToList();
-
-                    var sql = @"SELECT c.relname AS table_name, COALESCE(d.description, c.relname) AS display_name
-                        FROM pg_class c
-                        JOIN pg_namespace n ON n.oid = c.relnamespace
-                        LEFT JOIN pg_description d ON d.objoid = c.oid AND d.objsubid = 0
-                        WHERE c.relkind IN ('r', 'v') AND n.nspname = 'public'
-                        ORDER BY display_name";
-
-                    using (var command = db.Database.GetDbConnection().CreateCommand())
-                    {
-                        command.CommandText = sql;
-                        db.Database.OpenConnection();
-
-                        using (var reader = command.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                string tableName = reader.GetString(0);
-                                string displayName = reader.GetString(1);
-
-                                if (allowedTables.Contains(tableName))
-                                {
-                                    if (allowedTables.Contains(tableName))
-                                    {
-                                        var table = new TableInfo() { Name = tableName, DisplayName = displayName };
-
-                                        string[] referenceTables = { "city", "street", "position", "profession", "department", "specialty", "qualification", "bank", "publisher", "author" };
-
-                                        if (referenceTables.Contains(tableName.ToLower()))
-                                            ReferenceTables.Add(table);
-                                        else
-                                            OtherTables.Add(table);
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    if (ReferenceTableNames.Contains(table.Name))
+                        ReferenceTables.Add(table);
+                    else
+                        OtherTables.Add(table);
                 }
             }
             catch (Exception ex)
@@ -130,44 +118,14 @@ namespace csharp_DBCourseWork_sem5.ViewModels
         {
             try
             {
-                var sw = System.Diagnostics.Stopwatch.StartNew();
-
-                using var db = new BookStoreDbContext();
-                string sql = $"SELECT * FROM \"{table.Name}\" LIMIT 1000";
-
-                db.Database.OpenConnection();
-                long tOpen = sw.ElapsedMilliseconds;
-
-                using var command = db.Database.GetDbConnection().CreateCommand();
-                command.CommandText = sql;
-
-                using var reader = command.ExecuteReader();
-                long tQuery = sw.ElapsedMilliseconds;
-
-                DataTable dt = new DataTable();
-                dt.Load(reader);
-
-                foreach (DataColumn col in dt.Columns)
-                    col.ReadOnly = false;
-
-                long tLoad = sw.ElapsedMilliseconds;
+                var dt = _data.Load(table.Name);
 
                 TableData = dt.DefaultView;
                 _loadedTable = table;
-
-                Application.Current.Dispatcher.BeginInvoke(
-                    System.Windows.Threading.DispatcherPriority.ContextIdle,
-                    new Action(() =>
-                    {
-                        long tRender = sw.ElapsedMilliseconds;
-                        System.Diagnostics.Debug.WriteLine(
-                            $"[{table.Name}] подключение: {tOpen} мс | запрос: {tQuery - tOpen} мс | " +
-                            $"загрузка: {tLoad - tQuery} мс | отрисовка: {tRender - tLoad} мс | строк: {dt.Rows.Count}");
-                    }));
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(ex);
+                Debug.WriteLine(ex);
                 HandleError(ex);
             }
         }
@@ -182,10 +140,10 @@ namespace csharp_DBCourseWork_sem5.ViewModels
                 return;
             }
 
-            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var sw = Stopwatch.StartNew();
             try
             {
-                var dt = ParseRawSqlService.SqlQuery(RawSql);
+                var dt = _data.ExecuteRawSql(RawSql);
                 TableData = dt.DefaultView;
                 _loadedTable = null;
 
@@ -214,8 +172,8 @@ namespace csharp_DBCourseWork_sem5.ViewModels
 
                 try
                 {
-                    _notNullColumns = TableEditService.GetNotNullColumns(_loadedTable.Name);
-                    _primaryKey = TableEditService.GetPrimaryKey(_loadedTable.Name);
+                    _notNullColumns = _catalog.GetNotNullColumns(_loadedTable.Name);
+                    _primaryKey = _catalog.GetPrimaryKey(_loadedTable.Name);
 
                     if (_primaryKey.Count == 0)
                     {
@@ -241,12 +199,8 @@ namespace csharp_DBCourseWork_sem5.ViewModels
             bool hasPending = TableData?.Table?.Rows.Cast<DataRow>()
                 .Any(r => r.RowState == DataRowState.Modified) == true;
 
-            if (hasPending)
-            {
-                var answer = MessageBox.Show("Есть несохранённые изменения. Отменить их?", "Внимание",
-                                             MessageBoxButton.YesNo, MessageBoxImage.Question);
-                if (answer != MessageBoxResult.Yes) return;
-            }
+            if (hasPending && !_dialogs.Confirm("Есть несохранённые изменения. Отменить их?", "Внимание"))
+                return;
 
             IsEditMode = false;
             if (_loadedTable != null) LoadTable(_loadedTable);
@@ -261,7 +215,7 @@ namespace csharp_DBCourseWork_sem5.ViewModels
 
             try
             {
-                var defaults = TableEditService.GetDefaultValues(_loadedTable.Name);
+                var defaults = _catalog.GetDefaultValues(_loadedTable.Name);
 
                 foreach (var kvp in defaults)
                 {
@@ -271,7 +225,7 @@ namespace csharp_DBCourseWork_sem5.ViewModels
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Ошибка загрузки значений по умолчанию: {ex.Message}");
+                Debug.WriteLine($"Ошибка загрузки значений по умолчанию: {ex.Message}");
             }
 
             TableData.Table.Rows.Add(newRow);
@@ -298,70 +252,7 @@ namespace csharp_DBCourseWork_sem5.ViewModels
                 return;
             }
 
-            var errors = new List<string>();
-            var allRowsToSave = addedRows.Concat(modifiedRows).ToList();
-
-            foreach (var row in allRowsToSave)
-            {
-                foreach (var col in _notNullColumns)
-                {
-                    if (col.Equals("id", StringComparison.OrdinalIgnoreCase) && row.RowState == DataRowState.Added)
-                        continue;
-
-                    if (table.Columns.Contains(col) && TableEditService.IsEmpty(row[col]))
-                        errors.Add($"Строка {table.Rows.IndexOf(row) + 1}: поле «{ColumnTranslator.GetDisplayName(col)}» не может быть пустым");
-                }
-
-                foreach (DataColumn col in table.Columns)
-                {
-                    var value = row[col];
-                    if (TableEditService.IsEmpty(value)) continue;
-
-                    string colName = ColumnTranslator.GetDisplayName(col.ColumnName);
-                    string strValue = value.ToString()!.Trim();
-                    int rowNum = table.Rows.IndexOf(row) + 1;
-
-                    if (col.DataType == typeof(string) && col.MaxLength > 0 && strValue.Length > col.MaxLength)
-                    {
-                        errors.Add($"Строка {rowNum}: поле «{colName}» превышает {col.MaxLength} символов");
-                    }
-
-                    if (col.DataType == typeof(int) || col.DataType == typeof(decimal))
-                    {
-                        if (!decimal.TryParse(strValue, out decimal numValue))
-                        {
-                            errors.Add($"Строка {rowNum}: в поле «{colName}» должно быть число");
-                        }
-                        else
-                        {
-                            if (col.ColumnName == "year" && numValue < 868)
-                                errors.Add($"Строка {rowNum}: год не может быть меньше 868");
-                            if (col.ColumnName == "sale_price" && numValue <= 0)
-                                errors.Add($"Строка {rowNum}: цена должна быть больше 0");
-                            if (col.ColumnName == "purchase_price" && numValue <= 0)
-                                errors.Add($"Строка {rowNum}: цена должна быть больше 0");
-                            if (col.ColumnName == "quantity" && numValue < 0)
-                                errors.Add($"Строка {rowNum}: количество не может быть отрицательным");
-                        }
-                    }
-
-                    if (col.DataType == typeof(DateTime) || col.DataType == typeof(DateOnly))
-                    {
-                        if (!DateTime.TryParse(strValue, out _) && !DateOnly.TryParse(strValue, out _))
-                        {
-                            errors.Add($"Строка {rowNum}: в поле «{colName}» должна быть дата");
-                        }
-                    }
-                }
-            }
-
-            if (errors.Count > 0)
-            {
-                ShowMessage("Сохранение отменено:\n" + string.Join("\n", errors), isError: true);
-                SelectedTabIndex = 1;
-                return;
-            }
-
+            var errors = _validator.Validate(table, addedRows.Concat(modifiedRows), _notNullColumns);
             if (errors.Count > 0)
             {
                 ShowMessage("Сохранение отменено:\n" + string.Join("\n", errors), isError: true);
@@ -371,24 +262,12 @@ namespace csharp_DBCourseWork_sem5.ViewModels
 
             try
             {
-                int totalCount = 0;
-
-                if (addedRows.Count > 0)
-                {
-                    int inserted = TableEditService.InsertRows(_loadedTable.Name, addedRows);
-                    totalCount += inserted;
-                }
-
-                if (modifiedRows.Count > 0)
-                {
-                    int updated = TableEditService.UpdateRows(_loadedTable.Name, _primaryKey, modifiedRows);
-                    totalCount += updated;
-                }
+                int total = _data.Save(_loadedTable.Name, _primaryKey, addedRows, modifiedRows);
 
                 LoadTable(_loadedTable);
                 if (IsEditMode) EnableEditing();
 
-                ShowMessage($"Успешно сохранено строк: {totalCount}", isError: false);
+                ShowMessage($"Успешно сохранено строк: {total}", isError: false);
                 SelectedTabIndex = 1;
             }
             catch (Exception ex)
@@ -414,17 +293,15 @@ namespace csharp_DBCourseWork_sem5.ViewModels
                 return;
             }
 
-            var answer = MessageBox.Show(
+            bool confirmed = _dialogs.Confirm(
                 $"Удалить выбранные строки ({rows.Count}) из «{_loadedTable.DisplayName}»?\n\n" +
                 "Связанные записи будут удалены каскадом. Это действие необратимо.",
-                "Подтверждение удаления",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning,
-                MessageBoxResult.No);
-            if (answer != MessageBoxResult.Yes) return;
+                "Подтверждение удаления");
+            if (!confirmed) return;
 
             try
             {
-                int deleted = TableEditService.DeleteRows(_loadedTable.Name, _primaryKey, rows);
+                int deleted = _data.Delete(_loadedTable.Name, _primaryKey, rows);
 
                 foreach (var row in rows)
                 {
@@ -455,32 +332,31 @@ namespace csharp_DBCourseWork_sem5.ViewModels
         [RelayCommand]
         private void Export()
         {
+            if (TableData == null)
+            {
+                _dialogs.Warning("Сначала выберите таблицу!");
+                return;
+            }
+
             try
             {
-                if (TableData == null)
-                {
-                    MessageBox.Show("Сначала выберите таблицу!", "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
                 string prefix = SelectedTable?.Name ?? "Данные";
-                ExportToExcel.Export(TableData, prefix);
+                _export.Export(TableData, prefix);
 
-                MessageBox.Show("Файл успешно сохранен в папку Загрузки!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+                _dialogs.Info("Файл успешно сохранен в папку Загрузки!");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при экспорте:\n{ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                _dialogs.Error($"Ошибка при экспорте:\n{ex.Message}");
             }
         }
+
         [RelayCommand]
         private void Search()
         {
-            var searcher = new SearchService();
-
             try
             {
-                HighlightedRows = searcher.Search(TableData, SearchInput);
+                HighlightedRows = _search.Search(TableData, SearchInput);
             }
             catch
             {
@@ -489,8 +365,7 @@ namespace csharp_DBCourseWork_sem5.ViewModels
 
             try
             {
-                var allTables = ReferenceTables.Concat(OtherTables).ToList();
-                HighlightedTables = searcher.Search(allTables, SearchInput);
+                HighlightedTables = _search.Search(ReferenceTables.Concat(OtherTables), SearchInput);
             }
             catch
             {

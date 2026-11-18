@@ -11,7 +11,7 @@ namespace csharp_DBCourseWork_sem5.Services
     {
         public static HashSet<string> GetNotNullColumns(string table)
         {
-            using var db = new BookStoreDbContext();
+            using var db = new AppDbContext();
             db.Database.OpenConnection();
 
             using var cmd = db.Database.GetDbConnection().CreateCommand();
@@ -29,7 +29,7 @@ namespace csharp_DBCourseWork_sem5.Services
 
         public static List<string> GetPrimaryKey(string table)
         {
-            using var db = new BookStoreDbContext();
+            using var db = new AppDbContext();
             db.Database.OpenConnection();
 
             using var cmd = db.Database.GetDbConnection().CreateCommand();
@@ -50,7 +50,7 @@ namespace csharp_DBCourseWork_sem5.Services
         public static int InsertRows(string tableName, List<DataRow> rows)
         {
             int count = 0;
-            using var db = new BookStoreDbContext();
+            using var db = new AppDbContext();
             db.Database.OpenConnection();
 
             var connection = (NpgsqlConnection)db.Database.GetDbConnection();
@@ -82,7 +82,7 @@ namespace csharp_DBCourseWork_sem5.Services
 
         public static int UpdateRows(string table, List<string> pk, IEnumerable<DataRow> rows)
         {
-            using var db = new BookStoreDbContext();
+            using var db = new AppDbContext();
             db.Database.OpenConnection();
 
             var conn = db.Database.GetDbConnection();
@@ -135,7 +135,7 @@ namespace csharp_DBCourseWork_sem5.Services
 
         public static int DeleteRows(string table, List<string> pk, IEnumerable<DataRow> rows)
         {
-            using var db = new BookStoreDbContext();
+            using var db = new AppDbContext();
             db.Database.OpenConnection();
             var conn = db.Database.GetDbConnection();
 
@@ -207,7 +207,7 @@ namespace csharp_DBCourseWork_sem5.Services
         {
             var defaults = new Dictionary<string, object>();
 
-            using var db = new BookStoreDbContext();
+            using var db = new AppDbContext();
             db.Database.OpenConnection();
             var conn = db.Database.GetDbConnection();
 

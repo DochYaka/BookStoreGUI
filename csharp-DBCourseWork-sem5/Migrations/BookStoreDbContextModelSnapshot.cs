@@ -10,7 +10,7 @@ using csharp_DBCourseWork_sem5.Models;
 
 namespace csharp_DBCourseWork_sem5.Migrations
 {
-    [DbContext(typeof(BookStoreDbContext))]
+    [DbContext(typeof(AppDbContext))]
     partial class BookStoreDbContextModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)

@@ -1,12 +1,12 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using csharp_DBCourseWork_sem5.Models.Interfaces;
 using csharp_DBCourseWork_sem5.Services;
 using Npgsql;
 using OxyPlot;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Globalization;
-using System.Windows;
 
 namespace csharp_DBCourseWork_sem5.ViewModels
 {
@@ -43,11 +43,20 @@ namespace csharp_DBCourseWork_sem5.ViewModels
         [ObservableProperty] private PlotModel? _monthPlot;
         [ObservableProperty] private PlotModel? _topBooksPlot;
 
-    [ObservableProperty]
+        [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasError))]
         private string _errorText = string.Empty;
 
         public bool HasError => !string.IsNullOrEmpty(ErrorText);
+
+        private readonly IAnalyticsService _analytics;
+        private readonly IDialogService _dialogs;
+
+        public AnalyticsViewModel(IAnalyticsService analytics, IDialogService dialogs)
+        {
+            _analytics = analytics;
+            _dialogs = dialogs;
+        }
 
         [RelayCommand]
         private async Task InitializeAsync()
@@ -58,7 +67,7 @@ namespace csharp_DBCourseWork_sem5.ViewModels
                 var to = DateTime.Today;
                 var from = to.AddYears(-1);
 
-                var range = await AnalyticsService.QueryAsync(AnalyticsQueries.OrdersRange);
+                var range = await _analytics.QueryAsync(AnalyticsQueries.OrdersRange);
                 if (range.Rows.Count > 0 && range.Rows[0][0] != DBNull.Value && range.Rows[0][1] != DBNull.Value)
                 {
                     from = ToDate(range.Rows[0][0]);
@@ -86,7 +95,7 @@ namespace csharp_DBCourseWork_sem5.ViewModels
         [RelayCommand]
         private void Refresh()
         {
-            AnalyticsService.ClearCache();
+            _analytics.ClearCache();
             _ = LoadAsync();
         }
 
@@ -117,10 +126,10 @@ namespace csharp_DBCourseWork_sem5.ViewModels
                     ("to",   DateOnly.FromDateTime(DateTo.Value)),
                 };
 
-                var kpiT = AnalyticsService.QueryAsync(AnalyticsQueries.SalesKpi, p);
-                var monthsT = AnalyticsService.QueryAsync(AnalyticsQueries.SalesByMonth, p);
-                var booksT = AnalyticsService.QueryAsync(AnalyticsQueries.TopBooks, p);
-                var typesT = AnalyticsService.QueryAsync(AnalyticsQueries.RevenueByCustomerType, p);
+                var kpiT = _analytics.QueryAsync(AnalyticsQueries.SalesKpi, p);
+                var monthsT = _analytics.QueryAsync(AnalyticsQueries.SalesByMonth, p);
+                var booksT = _analytics.QueryAsync(AnalyticsQueries.TopBooks, p);
+                var typesT = _analytics.QueryAsync(AnalyticsQueries.RevenueByCustomerType, p);
 
                 await Task.WhenAll(kpiT, monthsT, booksT, typesT);
                 if (version != _version) return;
@@ -220,13 +229,11 @@ namespace csharp_DBCourseWork_sem5.ViewModels
                 ExportToExcel.ExportAnalytics(
                     "Аналитика", DateFrom, DateTo, kpi, byMonth, topBooks, byType);
 
-                MessageBox.Show("Файл сохранён в папку Загрузки!", "Успех",
-                                MessageBoxButton.OK, MessageBoxImage.Information);
+                _dialogs.Info("Файл сохранён в папку Загрузки!");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при экспорте:\n{ex.Message}", "Ошибка",
-                                MessageBoxButton.OK, MessageBoxImage.Error);
+                _dialogs.Error($"Ошибка при экспорте: {ex.Message}");
             }
         }
         private static string Rub(decimal v) => v.ToString("N0", Ru) + " ₽";

@@ -1,5 +1,5 @@
 ﻿using csharp_DBCourseWork_sem5.Models;
-using csharp_DBCourseWork_sem5.Services.Pages;
+using csharp_DBCourseWork_sem5.Services;
 using csharp_DBCourseWork_sem5.Services.Tables;
 using csharp_DBCourseWork_sem5.ViewModels;
 using System.Windows;
@@ -10,26 +10,31 @@ namespace csharp_DBCourseWork_sem5
 {
     public partial class MainWindow : Window
     {
-        public MainWindow()
+        private readonly IPageService _pages;
+
+        public MainWindow(MainViewModel vm, INavigationService navigation, IPageService pages)
         {
             InitializeComponent();
 
-            if (DataContext is MainViewModel vm)
+            _pages = pages;
+
+            DataContext = vm;
+
+            vm.LoadDataFailed += OnLoadDataFailed;
+            vm.ConnectionFailed += OnConnectionFailed;
+
+            vm.PropertyChanged += (s, e) =>
             {
-                vm.LoadDataFailed += OnLoadDataFailed;
-                vm.ConnectionFailed += OnConnectionFailed;
+                if (e.PropertyName == nameof(MainViewModel.HighlightedRows))
+                    dgData.Items.Refresh();
 
-                vm.PropertyChanged += (s, e) =>
-                {
-                    if (e.PropertyName == nameof(MainViewModel.HighlightedRows))
-                        dgData.Items.Refresh();
+                if (e.PropertyName == nameof(MainViewModel.Messages))
+                    tcOutput.SelectedIndex = vm.IsError ? 1 : 0;
+            };
 
-                    if (e.PropertyName == nameof(MainViewModel.Messages))
-                        tcOutput.SelectedIndex = vm.IsError ? 1 : 0;
-                };
-            }
+            Loaded += (_, _) => vm.Initialize();
 
-            Closing += (s, e) => new LoginWindow().Show();
+            Closing += (_, _) => navigation.ShowLogin();
         }
 
         private void OnLoadDataFailed(object? sender, EventArgs e)
@@ -66,7 +71,7 @@ namespace csharp_DBCourseWork_sem5
                 e.Cancel = true;
                 return;
             }
-            
+
             e.Column.Header = ColumnTranslator.GetDisplayName(e.PropertyName);
 
             e.Column.MinWidth = 20;
@@ -109,7 +114,7 @@ namespace csharp_DBCourseWork_sem5
             if (el.Tag is not string name || string.IsNullOrWhiteSpace(name)) return;
 
             fmPage.Visibility = Visibility.Visible;
-            OpenPageService.OpenPage(name, fmPage);
+            _pages.Open(name, fmPage);
         }
 
         private void Close_Click(object sender, RoutedEventArgs e)
@@ -127,7 +132,7 @@ namespace csharp_DBCourseWork_sem5
             dgData.CommitEdit(DataGridEditingUnit.Cell, true);
             dgData.CommitEdit(DataGridEditingUnit.Row, true);
         }
-    
+
         private void InputRequest_Click(object sender, RoutedEventArgs e)
         {
             string queries =

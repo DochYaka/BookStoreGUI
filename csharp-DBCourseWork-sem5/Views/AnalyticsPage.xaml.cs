@@ -7,11 +7,10 @@ namespace csharp_DBCourseWork_sem5.Pages
     {
         private bool _initialized;
 
-        public AnalyticsPage()
+        public AnalyticsPage(AnalyticsViewModel vm)
         {
             InitializeComponent();
 
-            var vm = new AnalyticsViewModel();
             DataContext = vm;
 
             Loaded += (_, _) =>

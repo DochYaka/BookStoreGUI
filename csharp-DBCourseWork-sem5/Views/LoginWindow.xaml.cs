@@ -1,9 +1,9 @@
-﻿using csharp_DBCourseWork_sem5.ViewModels;
+﻿using csharp_DBCourseWork_sem5.Services;
+using csharp_DBCourseWork_sem5.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using csharp_DBCourseWork_sem5.Services.Pages;
 
 namespace csharp_DBCourseWork_sem5
 {
@@ -12,17 +12,21 @@ namespace csharp_DBCourseWork_sem5
     /// </summary>
     public partial class LoginWindow : Window
     {
-        public LoginWindow()
+        private readonly INavigationService _navigation;
+        private readonly IPageService _pages;
+
+        public LoginWindow(LoginViewModel vm, INavigationService navigation, IPageService pages)
         {
             InitializeComponent();
 
-            if (DataContext is LoginViewModel vm)
-            {
-                vm.LoginSucceeded += OnLoginSucceeded;
-                vm.LoginFailed += OnLoginFailed;
-                vm.DbConnectFailed += OnDbConnectFailed;
-                vm.UnknownError += OnUnknownError;
-            }
+            _navigation = navigation;
+            _pages = pages;
+            DataContext = vm;
+
+            vm.LoginSucceeded += OnLoginSucceeded;
+            vm.LoginFailed += OnLoginFailed;
+            vm.DbConnectFailed += OnDbConnectFailed;
+            vm.UnknownError += OnUnknownError;
 
             fmPage.Visibility = Visibility.Visible;
         }
@@ -34,17 +38,17 @@ namespace csharp_DBCourseWork_sem5
         {
             if (sender is not MenuItem item) return;
             if (item.Header is not string name) return;
-            
+
             fmPage.Visibility = Visibility.Visible;
-            
-            OpenPageService.OpenPage(name, fmPage);
+
+            _pages.Open(name, fmPage);
         }
 
 
         private void OnLoginSucceeded(object? sender, System.EventArgs e)
         {
-            new MainWindow().Show();
-            Window.GetWindow(this)?.Close();
+            _navigation.ShowMain();
+            Close();
         }
 
         private void OnDbConnectFailed(object? sender, System.EventArgs e)
@@ -64,8 +68,7 @@ namespace csharp_DBCourseWork_sem5
 
         private void ChangePassword_Click(object sender, RoutedEventArgs e)
         {
-            var changeWindow = new ChangePasswordWindow();
-            changeWindow.ShowDialog();
+            _navigation.ShowChangePassword();
         }
 
         /// <summary>

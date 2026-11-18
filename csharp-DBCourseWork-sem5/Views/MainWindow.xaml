@@ -6,13 +6,10 @@
         xmlns:local="clr-namespace:csharp_DBCourseWork_sem5"
         xmlns:vm="clr-namespace:csharp_DBCourseWork_sem5.ViewModels"
         mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
         Title="MainWindow" Height="650" Width="1000" WindowStyle="None"
         FontFamily="Bahnschrift" FontSize="25" WindowStartupLocation="CenterScreen" ResizeMode="NoResize"
         Background="{DynamicResource MainBackground}">
-
-    <Window.DataContext>
-        <vm:MainViewModel />
-    </Window.DataContext>
 
     <Window.InputBindings>
         <KeyBinding Gesture="F5" Command="{Binding RunCommand}"/>

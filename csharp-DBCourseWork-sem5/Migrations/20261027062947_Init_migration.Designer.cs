@@ -11,7 +11,7 @@ using csharp_DBCourseWork_sem5.Models;
 
 namespace csharp_DBCourseWork_sem5.Migrations
 {
-    [DbContext(typeof(BookStoreDbContext))]
+    [DbContext(typeof(AppDbContext))]
     [Migration("20261027062947_Init_migration")]
     partial class Init_migration
     {
